@@ -45,7 +45,7 @@ jobs:
           file: ./Dockerfile
           builder: ${{ steps.buildx.outputs.name }}
           push: true
-          tags: vpolaris dnsmasq:2.86-10.fc36
+          tags: vpolaris/dnsmasq:2.86-10.fc36
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
       -
