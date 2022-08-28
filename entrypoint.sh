@@ -32,7 +32,8 @@ function restart() {
 }
 
 function makeconfig() {
-
+   envsubst '${TFTPSERVER} ${IPRANGE}'< "/root/dnsmasq.template" > "/etc/dnsmasq.conf"
+   dnsmasq --test
 }
 
 function_exists() {
