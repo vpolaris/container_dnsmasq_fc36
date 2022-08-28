@@ -1,6 +1,7 @@
 ARG sysroot=/mnt/sysroot
-ARG TFTPSERVER="127.0.0.1"
-ARG IPRANGE="192.168.0.0"
+ARG TFTPSERVER
+ARG IPRANGE="192.168.0.0,proxy,255.255.0.0"
+ARG OPTION
 
 FROM fedora:36 as builder
 ARG sysroot
@@ -107,6 +108,7 @@ FROM scratch
 ARG sysroot
 ARG TFTPSERVER
 ARG IPRANGE
+ARG OPTION
 COPY --from=builder ${sysroot} /
 ENV DISTTAG=f36container FGC=f36 FBR=f36 container=podman
 ENV DISTRIB_ID fedora
@@ -118,6 +120,7 @@ ENV LANG C.UTF-8
 ENV TERM xterm
 ENV TFTPSERVER=${TFTPSERVER}
 ENV IPRANGE=${IPRANGE}
+ENV OPTION=${OPTION}
 # 67 udp for DHCP and 53 for DNS
 EXPOSE 67/udp 53
 ENTRYPOINT ["./tini", "--", "/bin/entrypoint.sh"]

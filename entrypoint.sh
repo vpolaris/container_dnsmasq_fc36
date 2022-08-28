@@ -1,6 +1,7 @@
 #!/bin/sh
 
 function start() {
+  makeconfig
   ServerList="dnsmasq"
   for server in ${ServerList}; do
     if [ -f /etc/rc.d/init.d/${server}.service ]; then
@@ -31,8 +32,7 @@ function restart() {
 }
 
 function makeconfig() {
-   exec envsubst '${TFTPSERVER} ${IPRANGE}'< "/root/dnsmasq.template" > "/etc/dnsmasq.conf"
-   dnsmasq --test
+
 }
 
 function_exists() {
@@ -49,6 +49,9 @@ then
 fi
 
 case "$1" in
+  makeconfig)
+    function_exists makeconfig && makeconfig
+    ;;
   start)
     function_exists start && start
     ;;
