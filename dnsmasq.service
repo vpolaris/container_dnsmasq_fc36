@@ -1,11 +1,17 @@
 #!/bin/sh
-#
-# Startup script for the DNS caching server
-#
-# chkconfig: 2345 99 01
-# description: This script starts your DNS caching server
-# processname: dnsmasq
-# pidfile: /var/run/dnsmasq.pid
+
+### BEGIN INIT INFO
+# Provides:             dnsmasq
+# 
+# Short-Description:    A lightweight DHCP/caching DNS server
+# Description:          Dnsmasq is lightweight, easy to configure DNS forwarder and DHCP server.
+# It is designed to provide DNS and, optionally, DHCP, to a small network. It can serve the names of local machines which are not in the global
+# DNS. The DHCP server integrates with the DNS server and allows machines with DHCP-allocated addresses to appear in the DNS with names configured
+# either in each host or in a central configuration file. Dnsmasq supports static and dynamic DHCP leases and BOOTP for network booting of disk-less machines.
+### END INIT INFO
+
+PATH="/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin"
+DAEMON="/usr/sbin/dnsmasq"
 
 # Source function library.
 . /etc/rc.d/init.d/functions
@@ -14,32 +20,85 @@
 . /etc/sysconfig/network
 
 # Check that networking is up.
-[ "${NETWORKING}" == "no" ] && exit 0
+if [ "$(tr '[:upper:]' '[:lower:]' <<< $NETWORKING)" == "no" ]; then
+   echo 'Network is set to OFF!'
+   exit 1
+fi
 
-dnsmasq=/sbin/dnsmasq
-[ -f $dnsmasq ] || exit 0
+# Check if binary file is available
+if ! [ -f $DAEMON ]; then
+  echo 'unable to find binary : $DAEMON to launch service'
+  exit 1
+fi
+
+NAME="dnsmasq"
+VERSION="$(cat /$NAME.version| cut -d'-' -f1)"
+PIDFILE="/var/run/$NAME.pid"
+DEFAULTS=""
+CONF="/etc/$NAME.conf"
+
+# Build CMDLINE options to feed binary file 
+OPTION_CMDLINE=""
+if [ -f /etc/$NAME.conf ];then
+  OPTION_CMDLINE="-C $CONF"
+fi
+
+if [ -z $DNSMASQ_CMDLINE ];then
+  OPTION_CMDLINE=$DNSMASQ_CMDLINE $OPTION_CMDLINE
+fi
 
 # See how we were called.
 case "$1" in
   start)
-        echo -n "Starting dnsmasq: "
-        daemon $dnsmasq $OPTION -C /etc/dnsmasq.conf
+        echo " Starting $NAME $VERSION: "
+        $DAEMON $OPTION_CMDLINE
         RETVAL=$?
-        echo
-        [ $RETVAL -eq 0 ] && touch /var/lock/subsys/dnsmasq
+        if [ $RETVAL -eq 0 ]; then
+           touch "/var/lock/subsys/$NAME"
+           pgrep "$DAEMON" > "$PIDFILE"
+           echo -en "\033[1A"
+           success
+           echo -en "\033[1B"
+        else
+           echo -en "\033[1A"
+           failure
+           echo -en "\033[1B"
+        fi
         ;;
   stop)
-        if test "x`pidof dnsmasq`" != x; then
-            echo -n "Shutting down dnsmasq: "
-            killproc dnsmasq
+        if test "x$(pgrep $DAEMON)" != x; then
+            echo " Shutting down $NAME $VERSION: "
+            if [ -f  $PIDFILE ]; then
+           	  kill "$(cat $PIDFILE)"
+	          else
+	            kill "$(pgrep $DAEMON)"
+            fi
+            RETVAL=$?
+        else
+            echo "$NAME is not running."
+            RETVAL=0
         fi
+
         RETVAL=$?
-        echo
-        [ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/dnsmasq /var/run/dnsmasq.pid
+        if [ $RETVAL -eq 0 ]; then
+           rm -f /var/lock/subsys/$NAME $PIDFILE
+           echo -en "\033[1A"
+           success
+           echo -en "\033[1B"
+        else
+           echo -en "\033[1A"
+           failure
+           echo -en "\033[1B"
+        fi
         ;;
   status)
-        status dnsmasq
-        RETVAL=$?
+        if test "x$(pgrep $DAEMON)" != x; then
+            echo " $NAME is running: "
+            RETVAL=0
+        else
+            echo "$NAME is not running."
+            RETVAL=1
+        fi
         ;;
   restart|reload)
         $0 stop
@@ -47,7 +106,7 @@ case "$1" in
         RETVAL=$?
         ;;
   condrestart)
-            if test "x`/sbin/pidof dnsmasq`" != x; then
+            if test "x$(pgrep $DAEMON)" != x; then
                 $0 stop
                 $0 start
                 RETVAL=$?
